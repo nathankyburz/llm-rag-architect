@@ -8,10 +8,11 @@ explicit refusal when the corpus does not support an answer.
 No LangChain, no LlamaIndex. Every layer is written directly against the library
 underneath it, so every decision in this repository is one I can defend.
 
-> **Status: in progress.** Ingestion works end to end — extraction, chunking and
-> the domain model are built and tested. Retrieval, the HTTP API, the container
-> and the deployment are not yet written. This section is updated as milestones
-> land; the roadmap at the bottom says exactly where the line currently sits.
+> **Status: in progress.** Ingestion runs end to end against the real corpus —
+> `rag ingest` loads, chunks, embeds and indexes 378 pages into Qdrant, and a
+> second run writes nothing. The answering half is not finished: the LLM client
+> exists, the grounding prompt and `rag ask` do not. No HTTP API, no container,
+> no deployment yet. The roadmap at the bottom says exactly where the line sits.
 
 ---
 
@@ -49,6 +50,25 @@ OCR accuracy was checked arithmetically rather than by eye: on Brighton's income
 statement, both fiscal-year columns still add up after OCR
 (`221,293 + 2,450 − 42,700 = 181,043`, and so on down the table). Digits survived
 intact.
+
+## Ingestion, measured
+
+```
+$ rag ingest                       $ rag ingest        (second run)
+6 documents, 378 pages             6 documents unchanged
+1007 chunks indexed                0 chunks written
+372s                               143s
+                                   1007 points, untouched
+```
+
+Chunk ids are `uuid5` over a fixed namespace, keyed on document id, page and
+chunk text — so the second run replaces nothing and duplicates nothing. The skip
+is driven by the document's sha256, compared against the indexed `content_hash`
+payload field.
+
+The 143s of the no-op run is all extraction: the hash is computed from the
+loaded document, so a skip avoids chunking and embedding but not parsing.
+Keying on file path and mtime would avoid that too; not done.
 
 ## Architecture
 
@@ -104,6 +124,14 @@ id, page and chunk text — not on character offsets, which would all shift when
 sentence is inserted at the top of a file. Re-ingesting is therefore an idempotent
 upsert, and unchanged chunks are never re-embedded.
 
+**Chunks are measured with one tokenizer and consumed by another — knowingly.**
+The chunker sizes chunks with `cl100k_base`; `bge-small` tokenises with WordPiece
+and truncates at 512. Measured over 305 chunks, 25.6% exceed that limit and 7.7%
+of the corpus never reaches a vector, HTML tables worst hit (1.44x ratio against
+1.03x for prose). Left in place so the week-3 evaluation measures what it costs
+rather than assuming; the fix — counting with the embedding model's own tokenizer
+— is written down in [ADR 002](docs/adr/002-token-counting-mismatch.md).
+
 **Qdrant over Chroma.** A real server with payload filtering and quantization,
 rather than an embedded library that would have to be replaced before deployment.
 
@@ -142,10 +170,21 @@ Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 ```bash
 uv sync                  # create .venv and install, from the committed lockfile
 cp .env.example .env     # defaults give a working local setup
-uv run pytest            # 47 tests
+uv run pytest            # 85 tests, no Docker needed
 uv run ruff check .
 uv run mypy
 ```
+
+To ingest the corpus, start Qdrant and point the manifest at your PDFs:
+
+```bash
+docker compose up -d     # Qdrant on 6333, healthcheck, named volume
+uv run rag ingest        # see data/manifest.toml
+```
+
+The test suite needs neither Docker nor a downloaded model: the vector store
+tests run against the Qdrant client's in-process mode, and the pipeline is
+exercised end to end through in-memory fakes for all four ports.
 
 Configuration is read from the environment, prefixed and nested:
 `RAG_CHUNKING__CHUNK_SIZE`, `RAG_LLM__BASE_URL`. Every variable is documented with
@@ -155,7 +194,7 @@ its default in [`.env.example`](.env.example).
 
 | | |
 |---|---|
-| Tests | 47 passing, 89% coverage |
+| Tests | 85 passing, 90% coverage |
 | Typing | `mypy --strict`, no ignored modules beyond untyped third-party calls |
 | Linting | `ruff` with `E,F,I,UP,B,SIM,ANN,RUF` |
 | Dependencies | pinned in `uv.lock`, committed for reproducible builds |
@@ -171,15 +210,17 @@ gitignored: a test that read the real corpus would pass locally and fail in CI.
 - [x] Domain model and hexagonal ports
 - [x] PDF loader — HTML tables, page-level provenance, OCR'd scans rejected if empty
 - [x] Recursive token-aware chunker with header-preserving table splitting
-- [x] ADR 001 — extraction strategy
+- [x] Qdrant via Docker Compose — pinned, healthchecked, named volume
+- [x] fastembed adapter (`bge-small-en-v1.5`, 384 dimensions)
+- [x] Qdrant adapter — collection, indexed payload, idempotent upsert
+- [x] Ingestion pipeline, TOML manifest and `rag ingest`
+- [x] LLM client for any OpenAI-compatible endpoint
+- [x] ADR 001 — extraction strategy; ADR 002 — tokenizer mismatch
 
 **Next**
 
-- [ ] Qdrant via Docker Compose
-- [ ] fastembed adapter (`bge-small-en-v1.5`, 384 dimensions)
-- [ ] Qdrant adapter — collection, indexed payload, idempotent upsert
-- [ ] Ingestion pipeline and `rag ingest`
-- [ ] LLM client, grounding prompt, citations and refusal
+- [ ] Grounding prompt, citations and refusal
+- [ ] Citation verification — reject a page no retrieved chunk came from
 - [ ] `rag ask` — the first end-to-end answer
 - [ ] FastAPI: `/health`, `/query`, `/sources`, API key in header
 - [ ] Multi-stage Dockerfile, non-root, healthcheck
