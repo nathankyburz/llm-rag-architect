@@ -5,6 +5,7 @@ description = "Production-ready RAG over Premier League clubs' annual financial 
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "fastembed>=0.8.0",
     "pydantic>=2.9",
     "pydantic-settings>=2.5",
     "pymupdf>=1.24",

@@ -48,6 +48,9 @@ class EmbeddingSettings(BaseModel):
 
     model_name: str = Field(default="BAAI/bge-small-en-v1.5")
     batch_size: int = Field(default=32, ge=1, le=256)
+    # BGE models are trained asymmetrically and prescribe this prefix on the
+    # query side only. fastembed does not apply it, so the adapter does.
+    query_prefix: str = Field(default="Represent this sentence for searching relevant passages: ")
     # Cache for ONNX models downloaded on first use. Must be baked into a Docker
     # layer, otherwise every Cloud Run cold start re-downloads the model.
     cache_dir: Path | None = Field(default=None)
