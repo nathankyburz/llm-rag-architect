@@ -12,7 +12,11 @@ dependencies = [
     "pymupdf4llm>=0.0.17",
     "qdrant-client>=1.19.1",
     "tiktoken>=0.8",
+    "typer>=0.27.3",
 ]
+
+[project.scripts]
+rag = "rag_architect.cli:app"
 
 [dependency-groups]
 dev = [

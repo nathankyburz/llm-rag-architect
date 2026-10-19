@@ -76,6 +76,15 @@ class VectorStore(Protocol):
         document_type: DocumentType | None = None,
     ) -> list[SearchResult]: ...
 
+    def contains_content_hash(self, content_hash: str) -> bool:
+        """
+        Whether any stored chunk came from a document with this hash.
+
+        Lets ingestion skip an unchanged document without re-chunking or
+        re-embedding it. Relies on content_hash being an indexed payload field.
+        """
+        ...
+
 
 class LLMClient(Protocol):
     """

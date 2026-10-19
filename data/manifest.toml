@@ -1,0 +1,42 @@
+# Corpus description. One entry per PDF under data/raw/.
+# Metadata here lands in the Qdrant payload and is filterable.
+
+[[documents]]
+path = "brighton24-ocr.pdf"
+document_type = "club_accounts"
+title = "The Brighton and Hove Albion Football Club Limited - Annual Report FY2024"
+club = "Brighton & Hove Albion"
+fiscal_year = 2024
+
+[[documents]]
+path = "brighton25-ocr.pdf"
+document_type = "club_accounts"
+title = "The Brighton and Hove Albion Football Club Limited - Annual Report FY2025"
+club = "Brighton & Hove Albion"
+fiscal_year = 2025
+
+[[documents]]
+path = "chelsea25-ocr.pdf"
+document_type = "club_accounts"
+title = "Chelsea FC - Annual Report FY2025"
+club = "Chelsea"
+fiscal_year = 2025
+
+[[documents]]
+path = "newcastle25-ocr.pdf"
+document_type = "club_accounts"
+title = "Newcastle United FC - Annual Report FY2025"
+club = "Newcastle United"
+fiscal_year = 2025
+
+[[documents]]
+path = "manchester25.pdf"
+document_type = "club_accounts"
+title = "Manchester United plc - Annual Report on Form 20-F, FY2025"
+club = "Manchester United"
+fiscal_year = 2025
+
+[[documents]]
+path = "deloitte-annual-review-of-football-finance-2026.pdf"
+document_type = "industry_report"
+title = "Deloitte Annual Review of Football Finance 2026"

@@ -100,6 +100,18 @@ class QdrantVectorStore:
             for point in response.points
         ]
 
+    def contains_content_hash(self, content_hash: str) -> bool:
+        result = self._client.count(
+            collection_name=self._collection,
+            count_filter=qm.Filter(
+                must=[
+                    qm.FieldCondition(key="content_hash", match=qm.MatchValue(value=content_hash))
+                ]
+            ),
+            exact=True,
+        )
+        return result.count > 0
+
     def count(self) -> int:
         """Points currently stored. Used by the ingestion CLI to report progress."""
         return int(self._client.count(collection_name=self._collection, exact=True).count)
